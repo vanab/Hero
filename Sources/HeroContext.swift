@@ -175,6 +175,11 @@ extension HeroContext {
 
           newBarView.addSubview(realSnapshot)
           snapshot = newBarView
+        }else if let effectView = view as? VisualEffectView {
+            snapshot = VisualEffectView(frame: effectView.bounds)
+            (snapshot as! VisualEffectView).colorTint = effectView.colorTint
+            (snapshot as! VisualEffectView).colorTintAlpha = effectView.colorTintAlpha
+            (snapshot as! VisualEffectView).blurRadius = effectView.blurRadius
         } else if let effectView = view as? UIVisualEffectView {
           snapshot = UIVisualEffectView(effect: effectView.effect)
           snapshot.frame = effectView.bounds

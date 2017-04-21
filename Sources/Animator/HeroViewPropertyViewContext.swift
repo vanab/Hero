@@ -48,13 +48,29 @@ internal class HeroViewPropertyViewContext: HeroAnimatorViewContext {
 
   override func startAnimations(appearing: Bool) {
     guard let visualEffectView = snapshot as? UIVisualEffectView else { return }
-    let appearedEffect = visualEffectView.effect
-    let disappearedEffect = targetState.opacity == 0 ? nil : visualEffectView.effect
-    visualEffectView.effect = appearing ? disappearedEffect : appearedEffect
+    
+    if visualEffectView is VisualEffectView {
+        let appearColorAlpha : CGFloat = 0.3
+        let disappearColorAlpha : CGFloat = 0.0
+        let appearRadius : CGFloat = 15.0
+        let disappearRadius : CGFloat = 0.0
+        (visualEffectView as! VisualEffectView).blurRadius = appearing ? disappearRadius : appearRadius
+        (visualEffectView as! VisualEffectView).colorTintAlpha = appearing ? disappearColorAlpha : appearColorAlpha
+        duration = targetState.duration!
+        viewPropertyAnimator = UIViewPropertyAnimator(duration: duration, curve: .easeInOut) {
+            (visualEffectView as! VisualEffectView).blurRadius = appearing ? appearRadius : disappearRadius
+            (visualEffectView as! VisualEffectView).colorTintAlpha = appearing ? appearColorAlpha : disappearColorAlpha
+        }
+    }
+    else {
+        let appearedEffect = visualEffectView.effect
+        let disappearedEffect = targetState.opacity == 0 ? nil : visualEffectView.effect
+        visualEffectView.effect = appearing ? disappearedEffect : appearedEffect
 
-    duration = targetState.duration!
-    viewPropertyAnimator = UIViewPropertyAnimator(duration: duration, curve: .easeInOut) {
-      visualEffectView.effect = appearing ? appearedEffect : disappearedEffect
+        duration = targetState.duration!
+        viewPropertyAnimator = UIViewPropertyAnimator(duration: duration, curve: .easeInOut) {
+          visualEffectView.effect = appearing ? appearedEffect : disappearedEffect
+        }
     }
     viewPropertyAnimator!.startAnimation()
   }
