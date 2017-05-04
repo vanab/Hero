@@ -18,30 +18,32 @@ class DurationPreprocessor: BasePreprocessor {
     setDurationForInfiniteDuration(views: toViews, duration: maxDuration)
   }
 
+  func optimizedDurationFor(view: UIView) -> TimeInterval {
+    let targetState = context[view]!
+    return view.optimizedDuration(fromPosition: context.container.convert(view.layer.position, from: view.superview),
+                                  toPosition: targetState.position,
+                                  size: targetState.size,
+                                  transform: targetState.transform)
+  }
+
   func applyOptimizedDurationIfNoDuration(views: [UIView]) -> TimeInterval {
     var maxDuration: TimeInterval = 0
-    for view in views {
-      if context[view] != nil {
-        if context[view]?.duration == nil {
-          context[view]!.duration = view.optimizedDuration(targetState: context[view]!)
-        }
-        if context[view]!.duration! == .infinity {
-          maxDuration = max(maxDuration, view.optimizedDuration(targetState: context[view]!))
-        } else {
-          maxDuration = max(maxDuration, context[view]!.duration!)
-        }
+    for view in views where context[view] != nil {
+      if context[view]?.duration == nil {
+        context[view]!.duration = optimizedDurationFor(view: view)
+      }
+      if context[view]!.duration! == .infinity {
+        maxDuration = max(maxDuration, optimizedDurationFor(view: view))
+      } else {
+        maxDuration = max(maxDuration, context[view]!.duration!)
       }
     }
     return maxDuration
   }
 
   func setDurationForInfiniteDuration(views: [UIView], duration: TimeInterval) {
-    for view in views {
-      if context[view] != nil {
-        if context[view]!.duration! == .infinity {
-          context[view]!.duration = duration
-        }
-      }
+    for view in views where context[view]?.duration == .infinity {
+      context[view]!.duration = duration
     }
   }
 }

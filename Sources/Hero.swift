@@ -108,18 +108,18 @@ open class VisualEffectView: UIVisualEffectView {
 
 /**
  ### The singleton class/object for controlling interactive transitions.
- 
+
  ```swift
-   Hero.shared
+ Hero.shared
  ```
- 
+
  #### Use the following methods for controlling the interactive transition:
 
  ```swift
-   func update(progress:Double)
-   func end()
-   func cancel()
-   func apply(modifiers:[HeroModifier], to view:UIView)
+ func update(progress:Double)
+ func end()
+ func cancel()
+ func apply(modifiers:[HeroModifier], to view:UIView)
  ```
  */
 public class Hero: HeroBaseController {
@@ -146,6 +146,7 @@ public class Hero: HeroBaseController {
     }
   }
 
+  public var isAnimating: Bool = false
   /// a UIViewControllerContextTransitioning object provided by UIKit,
   /// might be nil when transitioning. This happens when calling heroReplaceViewController
   internal weak var transitionContext: UIViewControllerContextTransitioning?
@@ -171,7 +172,7 @@ public class Hero: HeroBaseController {
     return !inContainerController && (toViewController!.modalPresentationStyle == .overFullScreen || toViewController!.modalPresentationStyle == .overCurrentContext)
   }
   internal var fromOverFullScreen: Bool {
-    return !inContainerController && (fromViewController!.modalPresentationStyle == .overFullScreen || toViewController!.modalPresentationStyle == .overCurrentContext)
+    return !inContainerController && (fromViewController!.modalPresentationStyle == .overFullScreen || fromViewController!.modalPresentationStyle == .overCurrentContext)
   }
 
   internal var toView: UIView { return toViewController!.view }
@@ -276,14 +277,16 @@ internal extension Hero {
       container.backgroundColor = toView.backgroundColor
     }
 
-    super.animate()
-
-    if case .none = defaultAnimation {
-    } else if insertToViewFirst {
-      let toViewSnapshot = context.snapshotView(for: toView)
-      let fromViewSnapshot = context.snapshotView(for: fromView)
-      container.insertSubview(toViewSnapshot, belowSubview: fromViewSnapshot)
+    if fromOverFullScreen {
+      insertToViewFirst = true
     }
+    for animator in animators {
+      if let animator = animator as? HasInsertOrder {
+        animator.insertToViewFirst = insertToViewFirst
+      }
+    }
+
+    super.animate()
 
     fullScreenSnapshot!.removeFromSuperview()
   }
@@ -291,6 +294,7 @@ internal extension Hero {
   override func complete(finished: Bool) {
     guard transitioning else { return }
 
+    context.clean()
     if finished && presenting && toOverFullScreen {
       // finished presenting a overFullScreen VC
       context.unhide(rootView: toView)
@@ -396,12 +400,12 @@ internal extension Hero {
     }
 
     if let navigationController = vc as? UINavigationController,
-       let delegate = navigationController.topViewController as? HeroViewControllerDelegate {
+      let delegate = navigationController.topViewController as? HeroViewControllerDelegate {
       closure(delegate)
     }
 
     if let tabBarController = vc as? UITabBarController,
-       let delegate = tabBarController.viewControllers?[tabBarController.selectedIndex] as? HeroViewControllerDelegate {
+      let delegate = tabBarController.viewControllers?[tabBarController.selectedIndex] as? HeroViewControllerDelegate {
       closure(delegate)
     }
   }
@@ -424,6 +428,10 @@ extension Hero: UIViewControllerAnimatedTransitioning {
   }
   public func transitionDuration(using transitionContext: UIViewControllerContextTransitioning?) -> TimeInterval {
     return 0.375 // doesn't matter, real duration will be calculated later
+  }
+
+  public func animationEnded(_ transitionCompleted: Bool) {
+    isAnimating = !transitionCompleted
   }
 }
 
@@ -478,11 +486,16 @@ extension Hero: UINavigationControllerDelegate {
 }
 
 extension Hero: UITabBarControllerDelegate {
+  public func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
+    return !isAnimating
+  }
+
   public func tabBarController(_ tabBarController: UITabBarController, interactionControllerFor animationController: UIViewControllerAnimatedTransitioning) -> UIViewControllerInteractiveTransitioning? {
     return interactiveTransitioning
   }
 
   public func tabBarController(_ tabBarController: UITabBarController, animationControllerForTransitionFrom fromVC: UIViewController, to toVC: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+    isAnimating = true
     let fromVCIndex = tabBarController.childViewControllers.index(of: fromVC)!
     let toVCIndex = tabBarController.childViewControllers.index(of: toVC)!
     self.presenting = toVCIndex > fromVCIndex

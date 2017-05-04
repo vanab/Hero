@@ -75,6 +75,9 @@ internal class HeroCoreAnimationViewContext: HeroAnimatorViewContext {
     if let key = overlayKeyFor(key: key) {
       return overlayLayer?.value(forKeyPath: key)
     }
+    if snapshot.layer.animationKeys()?.isEmpty != false {
+      return snapshot.layer.value(forKeyPath:key)
+    }
     return (snapshot.layer.presentation() ?? snapshot.layer).value(forKeyPath: key)
   }
 
@@ -267,7 +270,7 @@ internal class HeroCoreAnimationViewContext: HeroAnimatorViewContext {
         let current = currentValue(key: key)
         self.state[key] = (current, current)
       }
-      let _ = animate(key: key, beginTime: 0, fromValue: targetValue, toValue: targetValue)
+      _ = animate(key: key, beginTime: 0, fromValue: targetValue, toValue: targetValue)
     }
   }
 

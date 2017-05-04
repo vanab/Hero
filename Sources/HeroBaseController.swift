@@ -47,10 +47,8 @@ public class HeroBaseController: NSObject {
             animator.seekTo(timePassed: timePassed)
           }
         } else {
-          for plugin in plugins {
-            if plugin.requirePerFrameCallback {
-              plugin.seekTo(timePassed: timePassed)
-            }
+          for plugin in plugins where plugin.requirePerFrameCallback {
+            plugin.seekTo(timePassed: timePassed)
           }
         }
       }
@@ -76,7 +74,7 @@ public class HeroBaseController: NSObject {
   /// max duration needed by the default animator and plugins
   public internal(set) var totalDuration: TimeInterval = 0.0
 
-  /// current animation complete duration. 
+  /// current animation complete duration.
   /// (differs from totalDuration because this one could be the duration for finishing interactive transition)
   internal var duration: TimeInterval = 0.0
   internal var beginTime: TimeInterval? {
@@ -131,12 +129,12 @@ public extension HeroBaseController {
   /**
    Update the progress for the interactive transition.
    - Parameters:
-   - progress: the current progress, must be between 0...1
+   - progress: the current progress, must be between -1...1
    */
   public func update(progress: Double) {
     guard transitioning else { return }
     self.beginTime = nil
-    self.progress = max(0, min(1, progress))
+    self.progress = max(-1, min(1, progress))
   }
 
   /**
@@ -145,7 +143,7 @@ public extension HeroBaseController {
    current state to the **end** state
    */
   public func end(animate: Bool = true) {
-    guard transitioning && interactive else { return }
+    guard transitioning else { return }
     if !animate {
       self.complete(finished:true)
       return
@@ -164,14 +162,18 @@ public extension HeroBaseController {
    current state to the **begining** state
    */
   public func cancel(animate: Bool = true) {
-    guard transitioning && interactive else { return }
+    guard transitioning else { return }
     if !animate {
       self.complete(finished:false)
       return
     }
     var maxTime: TimeInterval = 0
     for animator in self.animators {
-      maxTime = max(maxTime, animator.resume(timePassed:self.progress * self.totalDuration,
+      var adjustedProgress = self.progress
+      if adjustedProgress < 0 {
+        adjustedProgress = -adjustedProgress
+      }
+      maxTime = max(maxTime, animator.resume(timePassed:adjustedProgress * self.totalDuration,
                                              reverse: true))
     }
     self.complete(after: maxTime, finishing: false)
@@ -190,7 +192,7 @@ public extension HeroBaseController {
    - view: the view to override to
    */
   public func apply(modifiers: [HeroModifier], to view: UIView) {
-    guard transitioning && interactive else { return }
+    guard transitioning else { return }
     let targetState = HeroTargetState(modifiers: modifiers)
     if let otherView = self.context.pairedView(for: view) {
       for animator in self.animators {
@@ -383,7 +385,7 @@ internal extension HeroBaseController {
   func insert<T>(preprocessor: HeroPreprocessor, before: T.Type) {
     let processorIndex = processors.index {
       $0 is T
-    } ?? processors.count
+      } ?? processors.count
     preprocessor.context = context
     processors.insert(preprocessor, at: processorIndex)
   }

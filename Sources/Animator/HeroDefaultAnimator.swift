@@ -23,13 +23,9 @@
 import UIKit
 
 internal extension UIView {
-  func optimizedDuration(targetState: HeroTargetState) -> TimeInterval {
-    return optimizedDurationTo(position: targetState.position, size: targetState.size, transform: targetState.transform)
-  }
-
-  func optimizedDurationTo(position: CGPoint?, size: CGSize?, transform: CATransform3D?) -> TimeInterval {
-    let fromPos = (layer.presentation() ?? layer).position
-    let toPos = position ?? fromPos
+  func optimizedDuration(fromPosition: CGPoint, toPosition: CGPoint?, size: CGSize?, transform: CATransform3D?) -> TimeInterval {
+    let fromPos = fromPosition
+    let toPos = toPosition ?? fromPos
     let fromSize = (layer.presentation() ?? layer).bounds.size
     let toSize = size ?? fromSize
     let fromTransform = (layer.presentation() ?? layer).transform
@@ -49,9 +45,13 @@ internal extension UIView {
   }
 }
 
-internal class HeroDefaultAnimator<ViewContext>: HeroAnimator where ViewContext: HeroAnimatorViewContext {
+protocol HasInsertOrder: class {
+  var insertToViewFirst: Bool { get set }
+}
+internal class HeroDefaultAnimator<ViewContext: HeroAnimatorViewContext>: HeroAnimator, HasInsertOrder {
   weak public var context: HeroContext!
   var viewContexts: [UIView: ViewContext] = [:]
+  internal var insertToViewFirst = false
 
   public func seekTo(timePassed: TimeInterval) {
     for viewContext in viewContexts.values {
@@ -82,8 +82,13 @@ internal class HeroDefaultAnimator<ViewContext>: HeroAnimator where ViewContext:
   public func animate(fromViews: [UIView], toViews: [UIView]) -> TimeInterval {
     var duration: TimeInterval = 0
 
-    for v in fromViews { animate(view: v, appearing: false) }
-    for v in toViews { animate(view: v, appearing: true) }
+    if insertToViewFirst {
+      for v in toViews { animate(view: v, appearing: true) }
+      for v in fromViews { animate(view: v, appearing: false) }
+    } else {
+      for v in fromViews { animate(view: v, appearing: false) }
+      for v in toViews { animate(view: v, appearing: true) }
+    }
 
     for viewContext in viewContexts.values {
       duration = max(duration, viewContext.duration)
@@ -104,5 +109,6 @@ internal class HeroDefaultAnimator<ViewContext>: HeroAnimator where ViewContext:
       vc.clean()
     }
     viewContexts.removeAll()
+    insertToViewFirst = false
   }
 }
